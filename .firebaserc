@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "velin-hostel-booking",
+    "backend": "velin-hostels"
+  },
+  "targets": {},
+  "etags": {}
+}
