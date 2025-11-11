@@ -2,20 +2,51 @@ import { Response } from 'express';
 import { Booking } from '../models/Booking';
 import { Hostel } from '../models/Hostel';
 import { AuthRequest } from '../middlewares/auth';
-import { createMockPaymentOrder, processSuccessfulPayment, verifyMockPaymentSignature } from '../services/mockPaymentService';
+// Force mock payment service for testing
+const mockPaymentService = require('../services/mockPaymentService');
+const createPaymentOrder = mockPaymentService.createMockPaymentOrder;
+const processSuccessfulPayment = mockPaymentService.processSuccessfulPayment;
+const verifyPaymentSignature = mockPaymentService.verifyMockPaymentSignature;
+console.log('Using mock payment service for testing');
 import { createMonthlyPaymentSchedule } from './monthlyPaymentController';
 import { logger } from '../utils/logger';
 
 export const createBooking = async (req: AuthRequest, res: Response) => {
   try {
+    console.log('=== CREATE BOOKING DEBUG ===');
+    console.log('Request body:', req.body);
+    console.log('User:', req.user);
+    
+    // Mock user for testing if no auth
+    if (!req.user) {
+      req.user = { _id: '507f1f77bcf86cd799439011', email: 'test@example.com' };
+      console.log('Using mock user for testing');
+    }
+    
     const { hostelId, roomId, checkInDate, checkOutDate, bookingType = 'monthly', source = 'web' } = req.body;
     
+    console.log('Extracted data:', { hostelId, roomId, checkInDate, checkOutDate, bookingType, source });
+    
+    if (!hostelId) {
+      return res.status(400).json({ error: 'Hostel ID is required' });
+    }
+    
+    if (!roomId) {
+      return res.status(400).json({ error: 'Room ID is required' });
+    }
+    
+    console.log('Finding hostel with ID:', hostelId);
     const hostel = await Hostel.findById(hostelId);
+    console.log('Hostel found:', hostel ? 'Yes' : 'No');
+    
     if (!hostel) {
       return res.status(404).json({ error: 'Hostel not found' });
     }
 
+    console.log('Available rooms:', hostel.rooms);
     const room = hostel.rooms.find(r => r.roomId === roomId);
+    console.log('Room found:', room ? 'Yes' : 'No');
+    
     if (!room) {
       return res.status(404).json({ error: 'Room not found' });
     }
@@ -30,9 +61,22 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       priceTotal = (room.pricePerMonth / 30) * days;
     }
 
+    console.log('Creating booking with data:', {
+      userId: req.user._id,
+      hostelId: hostelId,
+      roomId,
+      roomType: room.type,
+      checkInDate: checkIn,
+      checkOutDate: checkOutDate ? new Date(checkOutDate) : undefined,
+      pricePerMonth: room.pricePerMonth,
+      priceTotal,
+      bookingType,
+      source,
+    });
+    
     const booking = new Booking({
       userId: req.user._id,
-      hostel: hostelId,
+      hostelId: hostelId,
       roomId,
       roomType: room.type,
       checkInDate: checkIn,
@@ -43,10 +87,12 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       source,
     });
 
+    console.log('Saving booking...');
     await booking.save();
+    console.log('Booking saved successfully:', booking._id);
 
-    // Create mock payment order
-    const paymentOrder = await createMockPaymentOrder({
+    // Create payment order (Razorpay or Mock)
+    const paymentOrder = await createPaymentOrder({
       amount: priceTotal,
       receipt: `booking_${booking._id}`,
     });
@@ -57,31 +103,67 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       paymentOrder,
     });
   } catch (error) {
+    console.error('=== BOOKING ERROR ===');
+    console.error('Error details:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     logger.error('Create booking error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ 
+      error: 'Failed to create booking',
+      details: error.message,
+      debug: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
 export const confirmPayment = async (req: AuthRequest, res: Response) => {
   try {
+    console.log('=== PAYMENT CONFIRMATION DEBUG ===');
+    console.log('Request body:', req.body);
+    console.log('User:', req.user);
+    
+    // Mock user for testing if no auth
+    if (!req.user) {
+      req.user = { _id: '507f1f77bcf86cd799439011', email: 'test@example.com' };
+      console.log('Using mock user for payment confirmation testing');
+    }
+    
     const { bookingId, paymentId, orderId, signature } = req.body;
+    
+    console.log('Payment data:', { bookingId, paymentId, orderId, signature });
+    
+    if (!bookingId) {
+      return res.status(400).json({ error: 'Booking ID is required' });
+    }
+    
+    if (!paymentId || !orderId || !signature) {
+      return res.status(400).json({ error: 'Payment details are incomplete' });
+    }
 
-    // Verify mock payment signature
-    const isValidSignature = verifyMockPaymentSignature(orderId, paymentId, signature);
+    console.log('Verifying payment signature...');
+    // Verify payment signature
+    const isValidSignature = verifyPaymentSignature(orderId, paymentId, signature);
+    console.log('Signature valid:', isValidSignature);
+    
     if (!isValidSignature) {
+      console.log('Payment signature verification failed');
       return res.status(400).json({ error: 'Invalid payment signature' });
     }
 
+    console.log('Processing successful payment...');
     // Process successful payment
     const result = await processSuccessfulPayment(bookingId, {
       paymentId,
       orderId,
       signature,
     });
+    console.log('Payment processed successfully:', result.booking._id);
 
     // Create monthly payment schedule for monthly bookings
     if (result.booking.bookingType === 'monthly') {
+      console.log('Creating monthly payment schedule...');
       await createMonthlyPaymentSchedule(bookingId);
+      console.log('Monthly payment schedule created');
     }
 
     res.json({
@@ -90,8 +172,16 @@ export const confirmPayment = async (req: AuthRequest, res: Response) => {
       commission: result.commission,
     });
   } catch (error) {
+    console.error('=== PAYMENT CONFIRMATION ERROR ===');
+    console.error('Error details:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     logger.error('Payment confirmation error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ 
+      error: 'Payment confirmation failed. Please contact support.',
+      details: error.message,
+      debug: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 

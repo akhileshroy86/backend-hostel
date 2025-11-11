@@ -6,8 +6,15 @@ import { HostelAvailability } from '../models/HostelAvailability';
 // Create monthly payment schedule after initial booking
 export const createMonthlyPaymentSchedule = async (bookingId: string) => {
   try {
+    console.log('Creating monthly payment schedule for booking:', bookingId);
     const booking = await Booking.findById(bookingId);
-    if (!booking || booking.bookingType !== 'monthly') return;
+    console.log('Booking found:', booking ? 'Yes' : 'No');
+    console.log('Booking type:', booking?.bookingType);
+    
+    if (!booking || booking.bookingType !== 'monthly') {
+      console.log('Skipping monthly payment schedule - not a monthly booking');
+      return;
+    }
 
     const checkInDate = new Date(booking.checkInDate);
     const currentDate = new Date();
@@ -19,17 +26,22 @@ export const createMonthlyPaymentSchedule = async (bookingId: string) => {
     const monthlyPayment = new MonthlyPayment({
       bookingId: booking._id,
       userId: booking.userId,
-      hostelId: booking.hostel,
+      hostelId: booking.hostelId,
       month: nextMonth.getMonth() + 1,
       year: nextMonth.getFullYear(),
       amount: booking.pricePerMonth,
       dueDate: nextMonth
     });
 
+    console.log('Saving monthly payment:', monthlyPayment);
     await monthlyPayment.save();
+    console.log('Monthly payment schedule created successfully');
     return monthlyPayment;
   } catch (error) {
-    console.error('Error creating monthly payment schedule:', error);
+    console.error('=== MONTHLY PAYMENT SCHEDULE ERROR ===');
+    console.error('Error details:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     throw error;
   }
 };

@@ -5,10 +5,21 @@ import { Commission } from '../models/Commission';
 import { Hostel } from '../models/Hostel';
 import { logger } from '../utils/logger';
 
+// Initialize Razorpay with environment variables
+const key_id = process.env.RZP_KEY_ID || 'rzp_test_Rdg9mn7VyBwR7t';
+const key_secret = process.env.RZP_KEY_SECRET || 'cmwPlpIqAVQRkoL3q5D5Gv5y';
+
+if (!key_id || !key_secret) {
+  logger.error('Razorpay credentials not found in environment variables');
+  throw new Error('Razorpay credentials are required');
+}
+
 const razorpay = new Razorpay({
-  key_id: process.env.RZP_KEY_ID!,
-  key_secret: process.env.RZP_KEY_SECRET!,
+  key_id,
+  key_secret,
 });
+
+logger.info('Razorpay initialized successfully');
 
 export const createPaymentOrder = async (bookingData: any) => {
   try {

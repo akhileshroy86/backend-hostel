@@ -11,6 +11,12 @@ import { logger } from './utils/logger';
 
 dotenv.config();
 
+// Debug environment variables
+console.log('Environment variables loaded:');
+console.log('RZP_KEY_ID:', process.env.RZP_KEY_ID ? 'Set' : 'Not set');
+console.log('RZP_KEY_SECRET:', process.env.RZP_KEY_SECRET ? 'Set' : 'Not set');
+console.log('MONGO_URI:', process.env.MONGO_URI ? 'Set' : 'Not set');
+
 const app = express();
 
 // Security middleware

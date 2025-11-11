@@ -13,6 +13,15 @@ dotenv.config();
 // Firebase Functions config
 const config = functions.config();
 
+// Set Razorpay environment variables from Firebase config
+if (config.razorpay) {
+  process.env.RZP_KEY_ID = config.razorpay.key_id;
+  process.env.RZP_KEY_SECRET = config.razorpay.key_secret;
+}
+if (config.payment) {
+  process.env.PAYMENT_MODE = config.payment.mode;
+}
+
 const app = express();
 
 // Security middleware

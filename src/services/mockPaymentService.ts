@@ -45,9 +45,12 @@ export const verifyMockPaymentSignature = (
   paymentId: string,
   signature: string
 ): boolean => {
+  console.log('Mock signature verification:', { orderId, paymentId, signature });
   // For mock payments, always return true for testing
-  // In real implementation, this would verify the actual signature
-  return signature && signature.length > 0;
+  // Accept any non-empty signature
+  const isValid = Boolean(signature && signature.trim().length > 0);
+  console.log('Mock signature valid:', isValid);
+  return isValid;
 };
 
 export const calculateCommission = (bookingAmount: number): {
