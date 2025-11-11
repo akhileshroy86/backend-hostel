@@ -73,13 +73,21 @@ app.post('/api/v1/bookings', (req, res) => {
   res.json({ message: 'Create booking', body: req.body });
 });
 
-const PORT = process.env.APP_PORT || 4000;
+// Cloud Run and many hosting platforms provide the listen port via the PORT env var.
+// Respect that first, then fall back to APP_PORT (project-specific override), then 4000.
+const PORT = process.env.PORT || process.env.APP_PORT || 4000;
+
+// Start the HTTP server immediately so the container becomes healthy quickly.
+// Connect to the database in the background; if DB connection fails we'll log the error
+// but keep the server running so the service can respond to health checks and return informative errors.
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+  console.log('MongoDB connection established');
 }).catch((error) => {
-  console.error('Failed to start server:', error);
-  process.exit(1);
+  console.error('Failed to connect to MongoDB:', error);
+  // Don't exit the process — keep the server running so Cloud Run health checks can pass and
+  // the application can surface a clear error via /health endpoints.
 });
