@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { trackEvent, getDashboardAnalytics, getOwnerAnalytics, getOwnerDashboard, trackOwnerResponse, getOwnerBookings, getOwnerAnalyticsData, updateOwnerBookingStatus } from '../controllers/analyticsController';
+import { trackEvent, getDashboardAnalytics, getOwnerAnalytics, trackOwnerResponse } from '../controllers/analyticsController';
 import { 
   getOwnerDashboardStats, 
   getOwnerAnalytics as getOwnerAnalyticsAdmin,
@@ -21,11 +21,11 @@ router.post('/events', trackEvent);
 router.post('/owner/response', authenticate, authorize(['hostel_owner']), trackOwnerResponse);
 router.get('/dashboard', authenticate, authorize(['admin']), getDashboardAnalytics);
 router.get('/owner', authenticate, authorize(['hostel_owner']), getOwnerAnalytics);
-router.get('/owner/dashboard', authenticate, authorize(['hostel_owner']), getOwnerDashboard);
+router.get('/owner/dashboard', authenticate, authorize(['hostel_owner']), getOwnerAnalytics);
 router.get('/owner/dashboard-stats', authenticate, authorize(['hostel_owner']), getOwnerDashboardStats);
 router.get('/owner/bookings', authenticate, authorize(['hostel_owner']), getOwnerBookings);
-router.get('/owner/analytics', authenticate, authorize(['hostel_owner']), getOwnerAnalyticsData);
-router.put('/owner/bookings/:bookingId', authenticate, authorize(['hostel_owner']), updateOwnerBookingStatus);
+router.get('/owner/analytics', authenticate, authorize(['hostel_owner']), getOwnerAnalytics);
+router.put('/owner/bookings/:bookingId', authenticate, authorize(['hostel_owner']), updateBookingStatus);
 router.get('/owner/:ownerId/analytics', authenticate, authorize(['hostel_owner']), getOwnerAnalyticsAdmin);
 router.get('/owner/:ownerId/bookings', authenticate, authorize(['hostel_owner']), getOwnerBookings);
 router.put('/owner/bookings/:bookingId', authenticate, authorize(['hostel_owner']), updateBookingStatus);

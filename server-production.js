@@ -73,7 +73,7 @@ app.post('/api/v1/bookings', (req, res) => {
   res.json({ message: 'Create booking', body: req.body });
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.APP_PORT || 4000;
 
 connectDB().then(() => {
   app.listen(PORT, () => {

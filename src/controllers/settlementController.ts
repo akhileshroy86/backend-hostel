@@ -36,12 +36,12 @@ export const generateMonthlySettlements = async (req: AuthRequest, res: Response
     // Create settlements for each owner
     for (const ownerId in ownerCommissions) {
       const ownerData = ownerCommissions[ownerId];
-      const ownerCommissions = ownerData.commissions;
-      
-      const totalBookings = ownerCommissions.length;
-      const totalRevenue = ownerCommissions.reduce((sum: number, c: any) => sum + c.bookingAmount, 0);
-      const totalCommission = ownerCommissions.reduce((sum: number, c: any) => sum + c.commissionAmount, 0);
-      const netPayout = ownerCommissions.reduce((sum: number, c: any) => sum + c.ownerPayout, 0);
+      const ownerCommissionList = ownerData.commissions;
+
+      const totalBookings = ownerCommissionList.length;
+      const totalRevenue = ownerCommissionList.reduce((sum: number, c: any) => sum + c.bookingAmount, 0);
+      const totalCommission = ownerCommissionList.reduce((sum: number, c: any) => sum + c.commissionAmount, 0);
+      const netPayout = ownerCommissionList.reduce((sum: number, c: any) => sum + c.ownerPayout, 0);
 
       // Check if settlement already exists
       const existingSettlement = await Settlement.findOne({
@@ -66,7 +66,7 @@ export const generateMonthlySettlements = async (req: AuthRequest, res: Response
 
         // Mark commissions as settled
         await Commission.updateMany(
-          { _id: { $in: ownerCommissions.map((c: any) => c._id) } },
+          { _id: { $in: ownerCommissionList.map((c: any) => c._id) } },
           { status: 'settled' }
         );
       }
@@ -113,10 +113,10 @@ export const markSettlementPaid = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Settlement not found' });
     }
 
-    settlement.status = 'paid';
-    settlement.paymentMethod = paymentMethod;
-    settlement.transactionId = transactionId;
-    settlement.settledAt = new Date();
+  settlement.status = 'paid';
+  // Map to fields defined in the Settlement model
+  settlement.paymentReference = transactionId || paymentMethod || '';
+  settlement.paymentDate = new Date();
 
     await settlement.save();
 

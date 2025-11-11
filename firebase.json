@@ -1,13 +1,61 @@
 {
-  "functions": {
-    "source": ".",
-    "runtime": "nodejs18",
-    "ignore": [
-      "node_modules",
-      ".git",
-      "firebase-debug.log",
-      "firebase-debug.*.log",
-      "*.local"
-    ]
+  "functions": [
+    {
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local",
+        "src",
+        "tests",
+        "temp",
+        "uploads",
+        "*.local.env",
+        ".env",
+        ".env.*",
+        "*.log",
+        "coverage",
+        "jest.config.js"
+      ],
+      "source": ".",
+      "runtime": "nodejs22"
+    },
+    {
+      "source": "velin",
+      "codebase": "velin",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm run build"
+      ]
+    }
+  ],
+  "emulators": {
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "database": {
+      "port": 9000
+    },
+    "auth": {
+      "port": 9099
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "pubsub": {
+      "port": 8085
+    }
   }
 }

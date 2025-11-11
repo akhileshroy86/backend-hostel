@@ -1,6 +1,6 @@
 {
   "projects": {
-    "default": "velin-hostel-booking",
+    "default": "velin-hostels",
     "backend": "velin-hostels",
     "velin": "velin-hostels"
   },

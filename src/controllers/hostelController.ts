@@ -3,10 +3,11 @@ import { Hostel } from '../models/Hostel';
 import { AuthRequest } from '../middlewares/auth';
 import { logger } from '../utils/logger';
 
+// ✅ Create Hostel
 export const createHostel = async (req: AuthRequest, res: Response) => {
   try {
     const { name, type, description, address, contact, amenities, rooms, images, googleMapsUrl } = req.body;
-    
+
     // Generate room IDs and format rooms
     const formattedRooms = rooms.map((room: any, index: number) => ({
       roomId: `${name.toLowerCase().replace(/\s+/g, '-')}-${room.type}-${index + 1}`,
@@ -17,9 +18,9 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
     }));
 
     // Mock coordinates (no map functionality)
-    const coordinates = [77.5946, 12.9716]; // Default coordinates
-    
-    // Map frontend type values to backend enum values
+    const coordinates = [77.5946, 12.9716]; // Default coordinates (Bangalore center)
+
+    // Type mapping for frontend -> backend consistency
     const typeMapping: { [key: string]: string } = {
       'boys_hostel': 'boys',
       'boyshostel': 'boys',
@@ -31,11 +32,9 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       'student': 'student',
       'travelers': 'travelers'
     };
-    
-    logger.info('Received hostel type:', type);
+
     const mappedType = typeMapping[type] || type;
-    logger.info('Mapped hostel type:', mappedType);
-    
+
     const hostel = new Hostel({
       ownerId: req.user._id,
       name,
@@ -50,7 +49,7 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       },
       location: {
         type: 'Point',
-        coordinates: coordinates
+        coordinates
       },
       contact,
       rooms: formattedRooms,
@@ -62,7 +61,7 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
     });
 
     await hostel.save();
-    
+
     res.status(201).json({
       message: 'Hostel created successfully',
       hostel
@@ -73,18 +72,24 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// ✅ Get Hostels (Search + Filters + Pagination)
 export const getHostels = async (req: Request, res: Response) => {
   try {
-    const { 
-      q, location, type, minPrice, maxPrice, amenities,
-      page = 1, limit = 20 
-    } = req.query;
+    // ✅ Safely extract and trim query parameters
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const location = typeof req.query.location === 'string' ? req.query.location.trim() : '';
+    const type = typeof req.query.type === 'string' ? req.query.type.trim() : '';
+    const amenities = typeof req.query.amenities === 'string' ? req.query.amenities.trim() : '';
+    const minPrice = typeof req.query.minPrice === 'string' ? Number(req.query.minPrice) : undefined;
+    const maxPrice = typeof req.query.maxPrice === 'string' ? Number(req.query.maxPrice) : undefined;
+    const page = typeof req.query.page === 'string' ? parseInt(req.query.page) : 1;
+    const limit = typeof req.query.limit === 'string' ? parseInt(req.query.limit) : 20;
 
-    let query: any = { verified: true }; // Only show verified hostels
-    let orConditions: any[] = [];
+    let query: any = { verified: true }; // Only verified hostels
+    const orConditions: any[] = [];
 
     // Text search
-    if (q && q.trim() !== '') {
+    if (q !== '') {
       orConditions.push(
         { name: { $regex: q, $options: 'i' } },
         { description: { $regex: q, $options: 'i' } },
@@ -93,8 +98,8 @@ export const getHostels = async (req: Request, res: Response) => {
       );
     }
 
-    // Location search
-    if (location && location.trim() !== '') {
+    // Location filter
+    if (location !== '') {
       orConditions.push(
         { 'address.city': { $regex: location, $options: 'i' } },
         { 'address.area': { $regex: location, $options: 'i' } }
@@ -107,23 +112,29 @@ export const getHostels = async (req: Request, res: Response) => {
     }
 
     // Type filter
-    if (type && type.trim() !== '') {
+    if (type !== '') {
       query.type = type;
     }
 
+    // Price range filter
+    if (minPrice || maxPrice) {
+      query['rooms.pricePerMonth'] = {};
+      if (minPrice) query['rooms.pricePerMonth'].$gte = minPrice;
+      if (maxPrice) query['rooms.pricePerMonth'].$lte = maxPrice;
+    }
+
     // Amenities filter
-    if (amenities) {
-      const amenityList = (amenities as string).split(',');
+    if (amenities !== '') {
+      const amenityList = amenities.split(',');
       query.amenities = { $in: amenityList };
     }
 
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const skip = (page - 1) * limit;
 
-    // Execute query
     const hostels = await Hostel.find(query)
       .populate('ownerId', 'name phone')
       .skip(skip)
-      .limit(parseInt(limit as string))
+      .limit(limit)
       .sort({ createdAt: -1, rating: -1 });
 
     const total = await Hostel.countDocuments(query);
@@ -131,10 +142,10 @@ export const getHostels = async (req: Request, res: Response) => {
     res.json({
       hostels,
       pagination: {
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
+        page,
+        limit,
         total,
-        pages: Math.ceil(total / parseInt(limit as string))
+        pages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
@@ -143,14 +154,13 @@ export const getHostels = async (req: Request, res: Response) => {
   }
 };
 
+// ✅ Get single hostel by ID
 export const getHostelById = async (req: Request, res: Response) => {
   try {
     const hostel = await Hostel.findById(req.params.id).populate('ownerId', 'name phone email');
-    
     if (!hostel) {
       return res.status(404).json({ error: 'Hostel not found' });
     }
-
     res.json({ hostel });
   } catch (error) {
     logger.error('Get hostel by ID error:', error);
@@ -158,11 +168,10 @@ export const getHostelById = async (req: Request, res: Response) => {
   }
 };
 
+// ✅ Get all hostels for logged-in owner
 export const getOwnerHostels = async (req: AuthRequest, res: Response) => {
   try {
-    const hostels = await Hostel.find({ ownerId: req.user._id })
-      .sort({ createdAt: -1 });
-    
+    const hostels = await Hostel.find({ ownerId: req.user._id }).sort({ createdAt: -1 });
     res.json({ hostels });
   } catch (error) {
     logger.error('Get owner hostels error:', error);
@@ -170,13 +179,11 @@ export const getOwnerHostels = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// ✅ Update Hostel
 export const updateHostel = async (req: AuthRequest, res: Response) => {
   try {
     const hostel = await Hostel.findById(req.params.id);
-    
-    if (!hostel) {
-      return res.status(404).json({ error: 'Hostel not found' });
-    }
+    if (!hostel) return res.status(404).json({ error: 'Hostel not found' });
 
     if (hostel.ownerId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Access denied' });
@@ -184,48 +191,36 @@ export const updateHostel = async (req: AuthRequest, res: Response) => {
 
     Object.assign(hostel, req.body);
     hostel.updatedAt = new Date();
-    
     await hostel.save();
-    
-    res.json({
-      message: 'Hostel updated successfully',
-      hostel
-    });
+
+    res.json({ message: 'Hostel updated successfully', hostel });
   } catch (error) {
     logger.error('Update hostel error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
 
+// ✅ Update Room Price
 export const updateRoomPrice = async (req: AuthRequest, res: Response) => {
   try {
     const { hostelId, roomId } = req.params;
     const { price } = req.body;
-    
+
     const hostel = await Hostel.findById(hostelId);
-    
-    if (!hostel) {
-      return res.status(404).json({ error: 'Hostel not found' });
-    }
+    if (!hostel) return res.status(404).json({ error: 'Hostel not found' });
 
     if (hostel.ownerId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const room = hostel.rooms.find(r => r.roomId === roomId);
-    if (!room) {
-      return res.status(404).json({ error: 'Room not found' });
-    }
+    const room = hostel.rooms.find((r) => r.roomId === roomId);
+    if (!room) return res.status(404).json({ error: 'Room not found' });
 
     room.pricePerMonth = price;
     hostel.updatedAt = new Date();
-    
     await hostel.save();
-    
-    res.json({
-      message: 'Room price updated successfully',
-      hostel
-    });
+
+    res.json({ message: 'Room price updated successfully', hostel });
   } catch (error) {
     logger.error('Update room price error:', error);
     res.status(500).json({ error: 'Internal server error' });

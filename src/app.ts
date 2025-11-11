@@ -12,11 +12,8 @@ dotenv.config();
 
 const app = express();
 
-// Debug environment variables
-console.log('Environment variables loaded:');
-console.log('RZP_KEY_ID:', process.env.RZP_KEY_ID ? 'Set' : 'Not set');
-console.log('RZP_KEY_SECRET:', process.env.RZP_KEY_SECRET ? 'Set' : 'Not set');
-console.log('MONGO_URI:', process.env.MONGO_URI ? 'Set' : 'Not set');
+// Minimal environment debug (avoid printing secrets)
+console.log('Environment variables loaded: MONGO_URI', process.env.MONGO_URI ? 'Set' : 'Not set');
 
 // ---- MIDDLEWARE ---- //
 app.use(helmet());
@@ -57,12 +54,30 @@ app.get('/health', (req, res) => {
 });
 
 // ---- DATABASE CONNECTION ---- //
+// Use a module-level flag to avoid reconnecting on warm function invocations
+let isConnected = false;
+
 export const connectDB = async () => {
   if (!process.env.MONGO_URI) {
     throw new Error('❌ MONGO_URI is not set in environment variables');
   }
+
+  // If mongoose is already connected, skip
+  if (isConnected || mongoose.connection.readyState === 1) {
+    console.log('MongoDB: already connected, skipping reconnect');
+    isConnected = true;
+    return;
+  }
+
   await mongoose.connect(process.env.MONGO_URI);
+  isConnected = true;
   console.log('✅ MongoDB connected');
+
+  // Reset flag if disconnected
+  mongoose.connection.on('disconnected', () => {
+    console.warn('MongoDB disconnected');
+    isConnected = false;
+  });
 };
 
 export { app };

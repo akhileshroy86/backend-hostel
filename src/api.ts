@@ -1,9 +1,9 @@
 import { app, connectDB } from './app';
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import { Request, Response } from 'express';
 
 let isConnected = false; // Prevents reconnecting on each function call
 
-export default async (req: VercelRequest, res: VercelResponse) => {
+export default async function handler(req: Request, res: Response) {
   try {
     if (!isConnected) {
       await connectDB();
@@ -17,4 +17,4 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     console.error('🔥 Serverless function error:', err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
-};
+}

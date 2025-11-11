@@ -5,6 +5,7 @@ const cors = require('cors');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const mongoose = require('mongoose');
+const admin = require('firebase-admin');
 const dotenv = require('dotenv');
 
 // Load environment variables
@@ -40,14 +41,22 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Database connection
+// Module-level flag to avoid reconnects on warm invocations
+let isConnected = false;
 const connectDB = async () => {
   try {
+    if (isConnected || mongoose.connection.readyState === 1) {
+      console.log('MongoDB: already connected, skipping reconnect');
+      isConnected = true;
+      return;
+    }
+
     let mongoUri = process.env.MONGO_URI || config.mongo?.uri;
     if (!mongoUri) {
       throw new Error('MONGO_URI is not defined');
     }
     await mongoose.connect(mongoUri);
+    isConnected = true;
     console.log('MongoDB connected successfully');
   } catch (error) {
     console.error('MongoDB connection error:', error);
@@ -70,7 +79,25 @@ app.get('/api/v1/health', (req, res) => {
 // API routes
 app.use('/api/v1', routes);
 
-// Initialize database connection
+// Initialize Firebase Admin safely
+if (!admin.apps || admin.apps.length === 0) {
+  if (process.env.FB_CLIENT_EMAIL && process.env.FB_PRIVATE_KEY) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FB_PROJECT_ID,
+        clientEmail: process.env.FB_CLIENT_EMAIL,
+        privateKey: process.env.FB_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      }),
+    });
+    console.log('Firebase Admin initialized with service account (env)');
+  } else {
+    admin.initializeApp();
+    console.log('Firebase Admin initialized with default credentials');
+  }
+} else {
+  console.log('Firebase Admin already initialized');
+}
+
 connectDB().catch((error) => {
   console.error('Failed to connect to database:', error);
 });

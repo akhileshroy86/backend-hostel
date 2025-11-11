@@ -45,4 +45,4 @@ userSchema.index({ phone: 1 });
 userSchema.index({ location: '2dsphere' });
 userSchema.index({ lastSeenAt: 1 });
 
-export const User = mongoose.model<IUser>('User', userSchema);
+export const User = mongoose.model<IUser>('User', userSchema);  

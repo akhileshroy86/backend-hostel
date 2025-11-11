@@ -23,7 +23,8 @@ export const sendPaymentReminders = async () => {
     for (const payment of paymentsToRemind) {
       // In a real app, you would send email/SMS here
       // For now, we'll just log and mark as reminded
-      logger.info(`Reminder: ${payment.userId.name} has payment of ₹${payment.amount} due on ${payment.dueDate.toDateString()}`);
+  const userName = (payment.userId as any)?.name || 'user';
+  logger.info(`Reminder: ${userName} has payment of ₹${payment.amount} due on ${payment.dueDate.toDateString()}`);
       
       // Mark reminder as sent
       payment.reminderSent = true;

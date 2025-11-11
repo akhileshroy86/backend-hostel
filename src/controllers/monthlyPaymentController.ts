@@ -49,7 +49,7 @@ export const createMonthlyPaymentSchedule = async (bookingId: string) => {
 // Get pending payments for a user
 export const getPendingPayments = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id ;
     
     const pendingPayments = await MonthlyPayment.find({
       userId,
@@ -69,7 +69,7 @@ export const getPendingPayments = async (req: Request, res: Response) => {
 export const processMonthlyPayment = async (req: Request, res: Response) => {
   try {
     const { paymentId } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id ;
 
     const payment = await MonthlyPayment.findOne({ _id: paymentId, userId });
     if (!payment) {
@@ -107,7 +107,7 @@ export const processMonthlyPayment = async (req: Request, res: Response) => {
 export const closeHostelDates = async (req: Request, res: Response) => {
   try {
     const { hostelId, roomId, dates, reason } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user?._id || req.user?.id;
 
     const availability = await HostelAvailability.findOne({ hostelId, roomId });
     
