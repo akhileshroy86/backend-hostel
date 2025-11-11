@@ -1,20 +1,14 @@
 import { app, connectDB } from './app';
-import { VercelRequest, VercelResponse } from '@vercel/node';
-import { logger } from './utils/logger';
 
-let isConnected = false;
+const PORT = process.env.PORT || 4000;
 
-export default async (req: VercelRequest, res: VercelResponse) => {
-  try {
-    if (!isConnected) {
-      await connectDB();
-      isConnected = true;
-      logger.info('✅ MongoDB connected (serverless)');
-    }
-
-    return app(req as any, res as any);
-  } catch (error) {
-    logger.error('🔥 Serverless function error:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-};
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running locally on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('❌ Failed to connect to database:', err);
+    process.exit(1);
+  });

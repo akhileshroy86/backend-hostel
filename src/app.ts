@@ -5,46 +5,64 @@ import compression from 'compression';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import { connectDB } from './config/database';
+import mongoose from 'mongoose';
 import routes from './routes';
-import { logger } from './utils/logger';
 
 dotenv.config();
 
+const app = express();
+
+// Debug environment variables
 console.log('Environment variables loaded:');
 console.log('RZP_KEY_ID:', process.env.RZP_KEY_ID ? 'Set' : 'Not set');
 console.log('RZP_KEY_SECRET:', process.env.RZP_KEY_SECRET ? 'Set' : 'Not set');
 console.log('MONGO_URI:', process.env.MONGO_URI ? 'Set' : 'Not set');
 
-const app = express();
-
-// Security middleware
+// ---- MIDDLEWARE ---- //
 app.use(helmet());
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      'http://localhost:3000',
+      'https://your-frontend.vercel.app', // change this to your deployed frontend
+    ],
+    credentials: true,
+  })
+);
 app.use(compression());
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+  windowMs: 15 * 60 * 1000, // 15 min
+  max: 100, // limit each IP
 });
 app.use(limiter);
 
-// Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Logging
-app.use(morgan('combined', {
-  stream: { write: (message) => logger.info(message.trim()) },
-}));
+// Logging to console (safe for serverless)
+app.use(
+  morgan('combined', {
+    stream: { write: (msg) => console.log(msg.trim()) },
+  })
+);
 
 // Routes
 app.use('/api/v1', routes);
 
-// Health check
+// Health Check
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-export { app, connectDB };
+// ---- DATABASE CONNECTION ---- //
+export const connectDB = async () => {
+  if (!process.env.MONGO_URI) {
+    throw new Error('❌ MONGO_URI is not set in environment variables');
+  }
+  await mongoose.connect(process.env.MONGO_URI);
+  console.log('✅ MongoDB connected');
+};
+
+export { app };
