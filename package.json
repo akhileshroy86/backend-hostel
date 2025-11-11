@@ -18,7 +18,7 @@
     "reminders": "ts-node src/scripts/runReminders.ts"
   },
   "engines": {
-    "node": "18"
+    "node": "22"
   },
   "dependencies": {
     "axios": "^1.5.0",
